@@ -1,6 +1,5 @@
 ---
-title: FoveaEnv
-emoji: ð§ 
+title: FoveaEnv 
 colorFrom: purple
 colorTo: pink
 sdk: gradio
