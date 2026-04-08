@@ -2,8 +2,6 @@
 
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional
 import uvicorn
 
 from env import FoveaEnv
@@ -16,7 +14,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,23 +22,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global env
+# Global environment
 env = FoveaEnv()
-
-# Models
-class ResetRequest(BaseModel):
-    task_id: str = "easy"
-
-class StepRequest(BaseModel):
-    move: str = "stay"
-    look: str = "stay"
-    inspect: bool = False
-
 
 # Root
 @app.get("/")
 def root():
-    return {"message": "FoveaEnv running"}
+    return {
+        "name": "FoveaEnv",
+        "status": "running"
+    }
 
 
 @app.get("/health")
@@ -48,13 +39,14 @@ def health():
     return {"status": "ok"}
 
 
-# ✅ FINAL RESET (NO BODY REQUIRED)
+# ✅ RESET (NO BODY REQUIRED — FINAL FIX)
 @app.post("/reset")
-def reset(req: Optional[ResetRequest] = Body(default=None)):
-    task_id = "easy"
+def reset(req: dict = Body(default={})):
+    task_id = req.get("task_id", "easy")
 
-    if req:
-        task_id = req.task_id
+    valid_tasks = ["easy", "medium", "hard"]
+    if task_id not in valid_tasks:
+        raise HTTPException(status_code=400, detail="Invalid task_id")
 
     obs = env.reset(task_id)
     data = obs.model_dump()
@@ -65,17 +57,25 @@ def reset(req: Optional[ResetRequest] = Body(default=None)):
     }
 
 
-# ✅ FINAL STEP (NO BODY REQUIRED)
+# ✅ STEP (NO BODY REQUIRED)
 @app.post("/step")
-def step(req: Optional[StepRequest] = Body(default=None)):
+def step(req: dict = Body(default={})):
 
-    if req is None:
-        req = StepRequest()
+    move = req.get("move", "stay")
+    look = req.get("look", "stay")
+    inspect = req.get("inspect", False)
+
+    valid_moves = ["up", "down", "left", "right", "stay"]
+
+    if move not in valid_moves:
+        raise HTTPException(status_code=400, detail="Invalid move")
+    if look not in valid_moves:
+        raise HTTPException(status_code=400, detail="Invalid look")
 
     action = BlinkAction(
-        move=req.move,
-        look=req.look,
-        inspect=req.inspect
+        move=move,
+        look=look,
+        inspect=inspect
     )
 
     obs, reward, done = env.step(action)
@@ -93,13 +93,16 @@ def step(req: Optional[StepRequest] = Body(default=None)):
     if done:
         try:
             state = env.state()
+
             score = grade_episode(
                 episode_reward=getattr(state, "episode_reward", 0.0),
                 reached_goal=(data.get("last_event") == "goal"),
                 privacy_violations=getattr(state, "privacy_violations", 0),
                 total_steps=data.get("step_count", 1)
             )
+
             response["score"] = score
+
         except Exception as e:
             response["score"] = {"error": str(e)}
 
@@ -111,5 +114,6 @@ def state():
     return env.state().model_dump()
 
 
+# Run server
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=7860)
