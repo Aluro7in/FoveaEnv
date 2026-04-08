@@ -7,7 +7,7 @@ pydantic==2.7.0
 numpy==1.26.4
 
 # Reinforcement learning runtime
-gymnasium==0.29.1
+gymnasium==0.28.1
 stable-baselines3==2.0.0
 torch==2.1.0
 
