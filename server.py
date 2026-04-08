@@ -1,7 +1,9 @@
-# server.py — FoveaEnv FastAPI Server
-from fastapi import FastAPI, HTTPException
+# server.py — FINAL WORKING VERSION (OpenEnv Compatible)
+
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 import uvicorn
 
 from env import FoveaEnv
@@ -13,94 +15,101 @@ app = FastAPI(
     description="Privacy-aware attention navigation benchmark",
     version="1.0.0"
 )
+
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# ── Global env instance ──────────────────────────────────────────
+
+# Global env
 env = FoveaEnv()
 
-# ── Request / Response Models ────────────────────────────────────
+# Models
 class ResetRequest(BaseModel):
-    task_id: str = "easy"  # easy | medium | hard
+    task_id: str = "easy"
 
 class StepRequest(BaseModel):
-    move: str = "stay"     # up | down | left | right | stay
-    look: str = "stay"     # up | down | left | right | stay
+    move: str = "stay"
+    look: str = "stay"
     inspect: bool = False
 
-# ── Routes ───────────────────────────────────────────────────────
 
+# Root
 @app.get("/")
 def root():
-    return {
-        "name": "FoveaEnv",
-        "version": "1.0.0",
-        "description": "Privacy-aware attention navigation benchmark",
-        "endpoints": ["/reset", "/step", "/state", "/health"]
-    }
+    return {"message": "FoveaEnv running"}
+
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
+
+# ✅ FINAL RESET (NO BODY REQUIRED)
 @app.post("/reset")
-def reset(req: ResetRequest):
-    valid_tasks = ["easy", "medium", "hard"]
-    if req.task_id not in valid_tasks:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid task_id '{req.task_id}'. Must be one of {valid_tasks}"
-        )
-    obs = env.reset(req.task_id)
-    return obs.model_dump()
+def reset(req: Optional[ResetRequest] = Body(default=None)):
+    task_id = "easy"
 
+    if req:
+        task_id = req.task_id
+
+    obs = env.reset(task_id)
+    data = obs.model_dump()
+
+    return {
+        "observation": data,
+        "info": {}
+    }
+
+
+# ✅ FINAL STEP (NO BODY REQUIRED)
 @app.post("/step")
-def step(req: StepRequest):
-    valid_moves = ["up", "down", "left", "right", "stay"]
-    valid_looks = ["up", "down", "left", "right", "stay"]
+def step(req: Optional[StepRequest] = Body(default=None)):
 
-    if req.move not in valid_moves:
-        raise HTTPException(status_code=400, detail=f"Invalid move '{req.move}'")
-    if req.look not in valid_looks:
-        raise HTTPException(status_code=400, detail=f"Invalid look '{req.look}'")
+    if req is None:
+        req = StepRequest()
 
-    action = BlinkAction(move=req.move, look=req.look, inspect=req.inspect)
+    action = BlinkAction(
+        move=req.move,
+        look=req.look,
+        inspect=req.inspect
+    )
+
     obs, reward, done = env.step(action)
+    data = obs.model_dump()
 
-    response = obs.model_dump()
-    response["reward"] = reward
-    response["done"] = done
+    response = {
+        "observation": data,
+        "reward": reward,
+        "done": done,
+        "truncated": False,
+        "info": {}
+    }
 
-    # Auto-grade when episode ends
+    # Optional scoring
     if done:
-        current_state = env.state()
         try:
-            privacy_violations = getattr(current_state, 'privacy_violations', 0)
-            episode_reward = getattr(current_state, 'episode_reward', 0.0)
+            state = env.state()
             score = grade_episode(
-                episode_reward=episode_reward,
-                reached_goal=(obs.last_event == "goal"),
-                privacy_violations=privacy_violations,
-                total_steps=obs.step_count
+                episode_reward=getattr(state, "episode_reward", 0.0),
+                reached_goal=(data.get("last_event") == "goal"),
+                privacy_violations=getattr(state, "privacy_violations", 0),
+                total_steps=data.get("step_count", 1)
             )
             response["score"] = score
-        except (AttributeError, TypeError) as e:
-            response["score"] = {
-                "final_score": 0.5,
-                "navigation_score": 0.5,
-                "privacy_score": 1.0,
-                "error": str(e)
-            }
+        except Exception as e:
+            response["score"] = {"error": str(e)}
+
     return response
+
 
 @app.get("/state")
 def state():
-    s = env.state()
-    return s.model_dump()
+    return env.state().model_dump()
 
-# ── Run ──────────────────────────────────────────────────────────
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=7860, reload=False)
+    uvicorn.run(app, host="0.0.0.0", port=7860)
