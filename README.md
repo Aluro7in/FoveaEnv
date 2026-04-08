@@ -1,5 +1,5 @@
 ---
-title: FoveaEnvÂ 
+title: FoveaEnv 
 colorFrom: purple
 colorTo: pink
 sdk: gradio
