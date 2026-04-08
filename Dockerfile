@@ -1,6 +1,6 @@
 # Dockerfile — Hugging Face Spaces ready for FoveaEnv
 # Uses the FastAPI app entrypoint defined in app.py and exposes port 7860.
-FROM python:3.12-slim
+FROM python:3.10-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
