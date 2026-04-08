@@ -1,6 +1,6 @@
 ---
 title: FoveaEnv
-emoji: 🧠
+emoji: ð§ 
 colorFrom: purple
 colorTo: pink
 sdk: gradio
@@ -28,3 +28,4 @@ See `requirements.txt` for dependencies
 
 ## Usage
 The app will launch automatically above.
+
