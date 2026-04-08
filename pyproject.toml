@@ -1,33 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "fovea-env"
+name = "foveaenv"
 version = "1.0.0"
-description = "Privacy-aware attention navigation benchmark for resource-constrained RL agents"
+description = "Privacy-aware attention navigation benchmark"
 readme = "README.md"
-license = { text = "MIT" }
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
-    "fastapi==0.115.0",
-    "uvicorn==0.30.0",
-    "pydantic==2.7.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.7.0",
+    "numpy>=1.26.4",
+    "gymnasium==0.28.1",
+    "stable-baselines3==2.0.0",
+    "torch==2.1.0",
     "openai==1.30.0",
-    "numpy==1.26.4",
+    "python-dotenv==1.1.1",
+    "requests==2.32.3",
+    "PyYAML==6.0.1",
+    "openenv-core>=0.2.0",
 ]
 
-[tool.setuptools.packages.find]
-where = ["."]
+[project.scripts]
+server = "app:main"
 
-[tool.openenv]
-name = "fovea-env"
-version = "1.0.0"
-entry_point = "server:app"
-framework = "fastapi"
-port = 7860
-
-[tool.openenv.modes.server]
-command = "uvicorn server:app --host 0.0.0.0 --port 7860"
-port = 7860
-
-[tool.openenv.modes.inference]
-command = "python inference.py"
-requires_env = ["API_BASE_URL", "MODEL_NAME", "HF_TOKEN"]
+[tool.setuptools]
+py-modules = ["app", "server", "env", "models", "grader"]
