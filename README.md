@@ -2,7 +2,7 @@
 title: FoveaEnv 
 colorFrom: purple
 colorTo: pink
-sdk: gradio
+sdk: docker
 sdk_version: 4.26.0
 python_version: 3.10
 app_file: app.py
