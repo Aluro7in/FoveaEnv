@@ -1,4 +1,5 @@
-﻿# server/app.py — FoveaEnv (OpenEnv multi-mode deployment entry point)
+# server/app.py — FINAL CLEAN VERSION (OpenEnv Compatible)
+
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -6,6 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+
 from env import FoveaEnv
 from models import BlinkAction
 from grader import grade_episode
@@ -33,29 +35,50 @@ def root():
 def health():
     return {"status": "ok"}
 
+# ✅ RESET
 @app.post("/reset")
 def reset(req: dict = Body(default={})):
     task_id = req.get("task_id", "easy")
+
     valid_tasks = ["easy", "medium", "hard"]
     if task_id not in valid_tasks:
         raise HTTPException(status_code=400, detail="Invalid task_id")
-    obs = env.reset(task_id)
-    return obs.model_dump()
 
+    obs = env.reset(task_id)
+    data = obs.model_dump()
+
+    return {
+        "observation": data,
+        "info": {}
+    }
+
+# ✅ STEP
 @app.post("/step")
 def step(req: dict = Body(default={})):
     move = req.get("move", "stay")
     look = req.get("look", "stay")
     inspect = req.get("inspect", False)
+
     valid_moves = ["up", "down", "left", "right", "stay"]
+
     if move not in valid_moves:
         raise HTTPException(status_code=400, detail="Invalid move")
     if look not in valid_moves:
         raise HTTPException(status_code=400, detail="Invalid look")
+
     action = BlinkAction(move=move, look=look, inspect=inspect)
+
     obs, reward, done = env.step(action)
     data = obs.model_dump()
-    response = {**data, "reward": reward, "done": done}
+
+    response = {
+        "observation": data,
+        "reward": reward,
+        "done": done,
+        "truncated": False,
+        "info": {}
+    }
+
     if done:
         try:
             state = env.state()
@@ -68,6 +91,7 @@ def step(req: dict = Body(default={})):
             response["score"] = score
         except Exception as e:
             response["score"] = {"error": str(e)}
+
     return response
 
 @app.get("/state")
