@@ -1,4 +1,4 @@
-# server/app.py — FINAL CLEAN VERSION (OpenEnv Compatible)
+# server/app.py — FINAL WORKING VERSION
 
 import sys
 import os
@@ -35,7 +35,6 @@ def root():
 def health():
     return {"status": "ok"}
 
-# ✅ RESET
 @app.post("/reset")
 def reset(req: dict = Body(default={})):
     task_id = req.get("task_id", "easy")
@@ -52,7 +51,6 @@ def reset(req: dict = Body(default={})):
         "info": {}
     }
 
-# ✅ STEP
 @app.post("/step")
 def step(req: dict = Body(default={})):
     move = req.get("move", "stay")
