@@ -15,11 +15,11 @@ class GradeResult(TypedDict):
 load_dotenv()
 
 # ── Configuration ─────────────────────────────────────────────────
-API_BASE_URL = os.getenv("API_BASE_URL", "http://172.21.195.161:11434/v1")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 HF_TOKEN = os.getenv("HF_TOKEN", "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")
 
 # ✅ Use a model that actually exists in your Ollama
-MODEL_NAME = os.getenv("MODEL_NAME", "gemma2:2b")   # or "gemma2:2b"
+MODEL_NAME = os.getenv("MODEL_NAME", "google/gemma-2-2b-it")   # or "gemma2:2b"
 ENV_URL = os.getenv("ENV_URL", "http://localhost:7860")
 
 # ── OpenAI client pointing to Ollama ──────────────────────────────
@@ -64,7 +64,7 @@ def get_state():
 def call_llm(system_prompt: str, user_message: str) -> str:
     try:
         message = client.chat.completions.create(
-            model="gemma2:2b",
+            model="MODEL_NAME",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
