@@ -64,7 +64,7 @@ def get_state():
 def call_llm(system_prompt: str, user_message: str) -> str:
     try:
         message = client.chat.completions.create(
-            model="MODEL_NAME",
+            model=MODEL_NAME,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
@@ -196,8 +196,8 @@ What is your next action? Respond with JSON only."""
     "score": round(score["final_score"], 4),
     "navigation_score": round(score["navigation_score"], 4),
     "privacy_efficiency_score": round(score["privacy_efficiency_score"], 4),
-    "reached_goal": score["reached_goal"]
-    }))
+    # reached_goal removed ✅
+}))
 
     if verbose:
         print("\n" + "="*60)
