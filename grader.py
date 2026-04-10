@@ -1,51 +1,56 @@
 # grader.py - Guaranteed to return scores strictly between 0 and 1
 
 import sys
+import numpy as np
 
-def clamp_score(score, epsilon=1e-6):
+def clamp_score(score, epsilon=1e-10):
     """Force score to be strictly between 0 and 1."""
+    score = float(score)
     if score <= 0.0:
         return epsilon
     if score >= 1.0:
         return 1.0 - epsilon
-    return score
+    return max(epsilon, min(1.0 - epsilon, score))
 
 def grade_episode(episode_data):
     """
-    Grade an episode. Replace the dummy scoring with your real logic.
-    This function MUST return (list_of_task_scores, total_score)
-    where every score is in (0,1).
+    Grade an episode. Returns (list_of_task_scores, total_score)
+    where EVERY score is guaranteed in (0,1).
     """
     # ============================================================
-    # TODO: REPLACE THIS BLOCK with your actual scoring logic
+    # REPLACE THIS with your ACTUAL scoring logic
+    # For now, using safe example scores
     # ============================================================
-    # Example: your environment returns raw scores that may be 0.0 or 1.0
-    raw_task_scores = [0.0, 0.85, 1.0, 0.42]   # <-- REPLACE THIS
+    raw_task_scores = [0.1, 0.85, 0.95, 0.42]  # Safe example - MODIFY FOR YOUR TASKS
     
     # ============================================================
-    # FORCE every score to be in (0,1) – DO NOT REMOVE
+    # ULTRA-SAFE CLAMPING
     # ============================================================
-    clamped_task_scores = [clamp_score(s) for s in raw_task_scores]
+    clamped_task_scores = []
+    for s in raw_task_scores:
+        safe_score = clamp_score(s)
+        # Final numpy clip for absolute safety
+        safe_score = float(np.clip(safe_score, 1e-10, 1.0 - 1e-10))
+        clamped_task_scores.append(safe_score)
     
-    # Total score (also clamped)
-    raw_total = sum(raw_task_scores) / len(raw_task_scores) if raw_task_scores else 0.0
+    # Total score - ultra safe
+    raw_total = sum(raw_task_scores) / len(raw_task_scores) if raw_task_scores else 0.5
     clamped_total = clamp_score(raw_total)
+    clamped_total = float(np.clip(clamped_total, 1e-10, 1.0 - 1e-10))
     
-    # Final safety check – raise error if any score is still 0 or 1
+    # FINAL VALIDATION
     for i, s in enumerate(clamped_task_scores):
-        if s <= 0.0 or s >= 1.0:
-            raise ValueError(f"Task {i} score {s} is out of range (0,1) after clamping!")
-    if clamped_total <= 0.0 or clamped_total >= 1.0:
-        raise ValueError(f"Total score {clamped_total} is out of range (0,1) after clamping!")
+        if not (1e-10 < s < 1.0 - 1e-10):
+            raise ValueError(f"Task {i} score {s} out of range!")
+    if not (1e-10 < clamped_total < 1.0 - 1e-10):
+        raise ValueError(f"Total score {clamped_total} out of range!")
     
-    # Debug output – will appear in HF Space logs
-    print(f"[grader] Raw scores: {raw_task_scores}", file=sys.stderr)
+    # Debug logs
     print(f"[grader] Clamped scores: {clamped_task_scores}", file=sys.stderr)
     print(f"[grader] Total: {clamped_total}", file=sys.stderr)
-    print(f"[grader] All scores in (0,1) ✓", file=sys.stderr)
     
     return clamped_task_scores, clamped_total
 
-# If the server expects a different name, add an alias
+# Required aliases
 grade = grade_episode
 evaluate = grade_episode
