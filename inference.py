@@ -15,14 +15,14 @@ class GradeResult(TypedDict):
 load_dotenv()
 
 # ── Configuration ─────────────────────────────────────────────────
-# The platform will inject these via environment variables.
-# Defaults are for local testing with Ollama.
-API_BASE_URL = os.getenv("API_BASE_URL", "http://172.21.195.161:11434/v1")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 HF_TOKEN = os.getenv("HF_TOKEN", "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")
-MODEL_NAME = os.getenv("MODEL_NAME", "gemma2:2b")   # Local Ollama model
+
+# ✅ Use a model that actually exists in your Ollama
+MODEL_NAME = os.getenv("MODEL_NAME", "google/gemma-2-2b-it")   # or "gemma2:2b"
 ENV_URL = os.getenv("ENV_URL", "http://localhost:7860")
 
-# ── OpenAI client pointing to the inference endpoint ──────────────
+# ── OpenAI client pointing to Ollama ──────────────────────────────
 client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN or "not-needed")
 
 # ── Environment API wrappers ──────────────────────────────────────
@@ -64,7 +64,7 @@ def get_state():
 def call_llm(system_prompt: str, user_message: str) -> str:
     try:
         message = client.chat.completions.create(
-            model=MODEL_NAME,          # ✅ Use the variable, not a string literal
+            model="MODEL_NAME",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
@@ -96,9 +96,8 @@ def run_episode(task_id: str = "medium", verbose: bool = True):
     print(f"Episode: {task_id.upper()}")
     print(f"{'='*60}")
 
-    # ✅ Correct OpenEnv [START] log format
-    start_log = {"type": "[START]", "task": task_id, "episode": 1}
-    print(json.dumps(start_log))
+    print("[START]")
+    print(json.dumps({"task": task_id, "episode": 1}))
 
     obs = reset_environment(task_id)
     total_reward = 0.0
@@ -112,7 +111,7 @@ Your goal is to reach the Goal ('G') while respecting private zones ('P').
 
 You must respond with a JSON object containing three fields:
 - "move": one of "up", "down", "left", "right", "stay"
-- "look": one of "up", "down", "left", "right", "stay"
+- "look": one of "up", "down", "left", "right", "stay"   <-- MUST BE A DIRECTION WORD, NOT COORDINATES
 - "inspect": true or false
 
 Example valid responses:
@@ -165,16 +164,11 @@ What is your next action? Respond with JSON only."""
         total_reward += reward
         steps += 1
 
-        # ✅ Correct OpenEnv [STEP] log format
-        step_log = {
-            "type": "[STEP]",
-            "step": steps,
-            "action": {"move": move, "look": look, "inspect": inspect},
-            "reward": round(reward, 4),
-            "done": done,
-            "event": event
-        }
-        print(json.dumps(step_log))
+        print("[STEP]")
+        print(json.dumps({
+            "step": steps, "action": {"move": move, "look": look, "inspect": inspect}, "reward": round(reward, 4),
+            "done": done, "event": event
+        }))
 
         if verbose:
             print(f"Step {steps:02d} | move={move:6s} look={look:6s} inspect={inspect} | "
@@ -196,16 +190,14 @@ What is your next action? Respond with JSON only."""
         total_steps=steps
     )
 
-    # ✅ Correct OpenEnv [END] log format
-    end_log = {
-        "type": "[END]",
-        "task": task_id,
-        "score": round(score["final_score"], 4),
-        "navigation_score": round(score["navigation_score"], 4),
-        "privacy_efficiency_score": round(score["privacy_efficiency_score"], 4),
-        "reached_goal": score["reached_goal"]
-    }
-    print(json.dumps(end_log))
+    print("[END]")
+    print(json.dumps({
+    "task": task_id,
+    "score": round(score["final_score"], 4),
+    "navigation_score": round(score["navigation_score"], 4),
+    "privacy_efficiency_score": round(score["privacy_efficiency_score"], 4),
+    "reached_goal": score["reached_goal"]
+    }))
 
     if verbose:
         print("\n" + "="*60)
@@ -248,4 +240,3 @@ def run_all_tasks():
 
 if __name__ == "__main__":
     run_all_tasks()
-
