@@ -10,7 +10,6 @@ class GradeResult(TypedDict):
     final_score: float
     navigation_score: float
     privacy_efficiency_score: float
-    reached_goal: bool
 
 load_dotenv()
 
