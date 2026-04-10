@@ -5,8 +5,7 @@ Ensures all task scores are strictly within (0, 1)
 """
 
 import json
-import sys
-from pathlib import Path
+from typing import List, Tuple, Any
 
 # ============================================================
 # SCORE CLAMPING UTILITIES (Fixes the "out of range" error)
@@ -36,72 +35,57 @@ def clamp_task_scores(task_scores: list) -> list:
 
 
 # ============================================================
-# YOUR ACTUAL EVALUATION LOGIC (Replace with your real code)
+# YOUR ORIGINAL grade_episode FUNCTION (MODIFIED TO CLAMP SCORES)
 # ============================================================
 
-def evaluate_agent():
+def grade_episode(episode_data: Any) -> Tuple[List[float], float]:
     """
-    Run your FoveaEnv agent and return raw task scores.
+    Grade a single episode and return (task_scores, total_score).
     
-    This is where you put your environment loop, agent inference,
-    reward collection, and score calculation.
+    This function should match what your server/app.py expects.
+    The exact signature may vary – adjust parameters as needed.
+    
+    Args:
+        episode_data: The data from your environment/agent run
     
     Returns:
-        tuple: (list_of_raw_task_scores, total_score)
+        task_scores: List of scores for each task (clamped to (0,1))
+        total_score: Overall score (clamped to (0,1))
     """
     # -----------------------------------------------------------------
-    # TODO: Replace this dummy implementation with your real evaluation
+    # TODO: Replace this with your actual scoring logic.
+    # This is where you compute raw scores from your environment.
     # -----------------------------------------------------------------
-    # Example dummy scores – these could be 0.0 or 1.0 in your real code
-    raw_task_scores = [0.0, 0.85, 1.0, 0.42]   # <-- This causes failure!
     
-    # Normally you would compute:
-    # raw_task_scores = []
-    # for task in tasks:
-    #     reward = run_agent_on_task(task)
-    #     normalized_score = reward / max_possible_reward
-    #     raw_task_scores.append(normalized_score)
+    # Example: extract raw scores from episode_data
+    # In your real code, you might have something like:
+    # raw_scores = []
+    # for task in episode_data['tasks']:
+    #     raw_scores.append(compute_task_score(task))
     
-    total_raw = sum(raw_task_scores) / len(raw_task_scores)
+    # DUMMY DATA – replace with real calculation
+    raw_task_scores = [0.0, 0.85, 1.0, 0.42]   # <-- These cause failure if not clamped
     
-    return raw_task_scores, total_raw
-
-
-# ============================================================
-# MAIN GRADER ENTRY POINT
-# ============================================================
-
-def main():
-    # Step 1: Get raw scores from your agent evaluation
-    raw_task_scores, raw_total = evaluate_agent()
-    
-    # Step 2: Clamp each task score (THIS FIXES THE VALIDATION ERROR)
+    # Apply clamping to each task score
     clamped_task_scores = clamp_task_scores(raw_task_scores)
+    
+    # Compute total (clamped as well)
+    raw_total = sum(raw_task_scores) / len(raw_task_scores) if raw_task_scores else 0.0
     clamped_total = clamp_score(raw_total)
     
-    # Step 3: (Optional) Verify no scores are exactly 0.0 or 1.0
-    for i, s in enumerate(clamped_task_scores):
-        if s <= 0.0 or s >= 1.0:
-            print(f"WARNING: Task {i} score still out of bounds: {s}", file=sys.stderr)
-            # Apply a safe fallback
-            clamped_task_scores[i] = 0.0001 if s <= 0.0 else 0.9999
+    # Optional: log for debugging
+    print(f"[grader] Raw scores: {raw_task_scores}")
+    print(f"[grader] Clamped scores: {clamped_task_scores}")
+    print(f"[grader] Total: {clamped_total}")
     
-    # Step 4: Output results in the format expected by the validator
-    # Typical hackathon format: JSON with "task_scores" and "total_score"
-    result = {
-        "task_scores": clamped_task_scores,
-        "total_score": clamped_total,
-        "status": "success"
-    }
-    
-    # Print to stdout (validator reads this)
-    print(json.dumps(result, indent=2))
-    
-    # Also print a human-readable summary
-    print(f"\n[Grader] Task scores: {[f'{s:.6f}' for s in clamped_task_scores]}", file=sys.stderr)
-    print(f"[Grader] Total score: {clamped_total:.6f}", file=sys.stderr)
-    print("[Grader] All scores are strictly between 0 and 1. ✓", file=sys.stderr)
+    return clamped_task_scores, clamped_total
 
+
+# ============================================================
+# OPTIONAL: main() for standalone testing
+# ============================================================
 
 if __name__ == "__main__":
-    main()
+    # Test with dummy data
+    scores, total = grade_episode(None)
+    print(json.dumps({"task_scores": scores, "total_score": total}, indent=2))
