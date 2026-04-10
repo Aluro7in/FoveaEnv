@@ -33,5 +33,4 @@ def grade_episode(
         "navigation_score": nav_score,
         "privacy_efficiency_score": priv_score,
         "final_score": final,
-        "reached_goal": reached_goal
     }
