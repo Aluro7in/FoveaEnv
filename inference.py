@@ -96,8 +96,8 @@ def run_episode(task_id: str = "medium", verbose: bool = True):
     print(f"Episode: {task_id.upper()}")
     print(f"{'='*60}")
 
-    start_log = {"type": "[START]", "task": task_id, "episode": 1}
-    print(json.dumps(start_log))
+    print("[START]")
+    print(json.dumps({"task": task_id, "episode": 1}))
 
     obs = reset_environment(task_id)
     total_reward = 0.0
@@ -164,15 +164,11 @@ What is your next action? Respond with JSON only."""
         total_reward += reward
         steps += 1
 
-        step_log = {
-            "type": "[STEP]",
-            "step": steps,
-            "action": {"move": move, "look": look, "inspect": inspect},
-            "reward": round(reward, 4),
-            "done": done,
-            "event": event
-        }
-        print(json.dumps(step_log))
+        print("[STEP]")
+        print(json.dumps({
+            "step": steps, "action": {"move": move, "look": look, "inspect": inspect}, "reward": round(reward, 4),
+            "done": done, "event": event
+        }))
 
         if verbose:
             print(f"Step {steps:02d} | move={move:6s} look={look:6s} inspect={inspect} | "
@@ -194,15 +190,14 @@ What is your next action? Respond with JSON only."""
         total_steps=steps
     )
 
-    end_log = {
-        "type": "[END]",
-        "task": task_id,
-        "score": round(score["final_score"], 4),
-        "navigation_score": round(score["navigation_score"], 4),
-        "privacy_efficiency_score": round(score["privacy_efficiency_score"], 4),
-        "reached_goal": score["reached_goal"]
-    }
-    print(json.dumps(end_log))
+    print("[END]")
+    print(json.dumps({
+    "task": task_id,
+    "score": round(score["final_score"], 4),
+    "navigation_score": round(score["navigation_score"], 4),
+    "privacy_efficiency_score": round(score["privacy_efficiency_score"], 4),
+    "reached_goal": score["reached_goal"]
+    }))
 
     if verbose:
         print("\n" + "="*60)
