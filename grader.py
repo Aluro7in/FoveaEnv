@@ -1,11 +1,15 @@
 # grader.py
-
+import math
 EPS = 1e-4
-
 def _strict_score(x: float) -> float:
-    x = float(x)
-    x = round(x, 4)       # round FIRST
-    if x <= 0.0:           # THEN clamp
+    try:
+        x = float(x)
+    except (TypeError, ValueError):
+        return EPS
+    if not math.isfinite(x):
+        return EPS
+    x = round(x, 4)
+    if x <= 0.0:
         return EPS
     if x >= 1.0:
         return 1.0 - EPS
