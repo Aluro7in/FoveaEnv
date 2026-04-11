@@ -67,14 +67,18 @@ assert done_timeout == True, "Should be done after max_steps"
 print("✅ Test 6 PASSED — timeout works")
 
 # ── Test 7: Grader range ─────────────────────────
+# ── Test 7: Grader strict range ─────────────────────────
 for ep_r, goal, priv, steps in [
-    (-5.0, False, 30, 25),   # worst case
-    (2.0,  True,  0,  10),   # best case
-    (0.0,  False, 0,   1),   # edge case
+    (-5.0, False, 30, 25),
+    (2.0, True, 0, 10),
+    (0.0, False, 0, 1),
 ]:
     score = grade_episode(ep_r, goal, priv, steps)
-    assert 0.0 <= score["final_score"] <= 1.0, f"Score out of range: {score}"
-print("✅ Test 7 PASSED — grader always in [0.0, 1.0]")
+    assert 0.0 < score["final_score"] < 1.0, f"final_score out of range: {score}"
+    assert 0.0 < score["navigation_score"] < 1.0, f"navigation_score out of range: {score}"
+    assert 0.0 < score["privacy_efficiency_score"] < 1.0, f"privacy_efficiency_score out of range: {score}"
+
+print("✅ Test 7 PASSED — all grader scores strictly in (0.0, 1.0)")
 
 # ── Test 8: All 3 tasks reset ────────────────────
 for task_id in ["easy", "medium", "hard"]:
