@@ -1,19 +1,28 @@
-# grader.py
+# grader.py — FIXED VERSION (strictly (0, 1) range)
 import math
+
 EPS = 1e-4
+
 def _strict_score(x: float) -> float:
     try:
         x = float(x)
     except (TypeError, ValueError):
-        return EPS
+        return 0.5  # safe default instead of EPS
+
     if not math.isfinite(x):
-        return EPS
+        return 0.5
+
     x = round(x, 4)
+
+    # CRITICAL FIX: Never allow touching 0 or 1
     if x <= 0.0:
-        return EPS
+        return 0.01          # was EPS (0.0001) → too close to 0
     if x >= 1.0:
-        return 1.0 - EPS
-    return x
+        return 0.99          # was 1.0 - EPS → too close to 1
+
+    # For values in (0,1), still keep some margin
+    return max(0.01, min(0.99, x))
+
 
 def grade_episode(
     episode_reward: float,
