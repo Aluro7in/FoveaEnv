@@ -17,11 +17,16 @@ load_dotenv()
 # ── Configuration ─────────────────────────────────────────────────
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 HF_TOKEN = os.getenv("HF_TOKEN", "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")
+
+# ✅ Use a model that actually exists in your Ollama
+MODEL_NAME = os.getenv("MODEL_NAME", "google/gemma-2-2b-it")   # or "gemma2:2b"
 MODEL_NAME = os.getenv("MODEL_NAME", "google/gemma-2-2b-it")
 ENV_URL = os.getenv("ENV_URL", "http://localhost:7860")
 
+# ── OpenAI client pointing to Ollama ──────────────────────────────
 client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN or "not-needed")
 
+# ── Environment API wrappers ──────────────────────────────────────
 def reset_environment(task_id: str = "easy"):
     try:
         response = requests.post(f"{ENV_URL}/reset", json={"task_id": task_id}, timeout=10)
@@ -56,6 +61,7 @@ def get_state():
         print(f"❌ Failed to get state: {e}")
         raise
 
+# ── LLM call with JSON cleaning ───────────────────────────────────
 def call_llm(system_prompt: str, user_message: str) -> str:
     try:
         message = client.chat.completions.create(
@@ -70,6 +76,8 @@ def call_llm(system_prompt: str, user_message: str) -> str:
         content = message.choices[0].message.content
         if content is None:
             return '{"move": "stay", "look": "stay", "inspect": false}'
+
+        # Strip markdown fences
         content = content.strip()
         if content.startswith("```json"):
             content = content[7:]
@@ -78,15 +86,19 @@ def call_llm(system_prompt: str, user_message: str) -> str:
         if content.endswith("```"):
             content = content[:-3]
         return content.strip()
+
     except Exception as e:
         print(f"❌ LLM call failed: {e}")
         return '{"move": "stay", "look": "stay", "inspect": false}'
 
+# ── Main episode runner ───────────────────────────────────────────
 def run_episode(task_id: str = "medium", verbose: bool = True):
     print(f"\n{'='*60}")
     print(f"Episode: {task_id.upper()}")
     print(f"{'='*60}")
 
+    print("[START]")
+    print(json.dumps({"task": task_id, "episode": 1}))
     # ✅ Single-line JSON with "type" field
     start_log = {"type": "[START]", "task": task_id, "episode": 1}
     print(json.dumps(start_log))
@@ -103,6 +115,7 @@ Your goal is to reach the Goal ('G') while respecting private zones ('P').
 
 You must respond with a JSON object containing three fields:
 - "move": one of "up", "down", "left", "right", "stay"
+- "look": one of "up", "down", "left", "right", "stay"   <-- MUST BE A DIRECTION WORD, NOT COORDINATES
 - "look": one of "up", "down", "left", "right", "stay"
 - "inspect": true or false
 
@@ -128,6 +141,7 @@ What is your next action? Respond with JSON only."""
 
         llm_response = call_llm(system_prompt, user_message)
 
+        # Parse and validate action
         try:
             action = json.loads(llm_response)
             move = action.get("move", "stay")
@@ -138,12 +152,14 @@ What is your next action? Respond with JSON only."""
                 print(f"⚠️  LLM returned invalid JSON: {llm_response}")
             move, look, inspect = "stay", "stay", False
 
+        # 🛡️ Fallback: ensure look is a valid direction
         valid_dirs = ["up", "down", "left", "right", "stay"]
         if look not in valid_dirs:
             if verbose:
                 print(f"⚠️  Invalid look direction '{look}', defaulting to 'stay'")
             look = "stay"
 
+        # Step environment
         result = step_environment(move, look, inspect)
         obs = result
         reward = result.get("reward", 0.0)
@@ -153,6 +169,11 @@ What is your next action? Respond with JSON only."""
         total_reward += reward
         steps += 1
 
+        print("[STEP]")
+        print(json.dumps({
+            "step": steps, "action": {"move": move, "look": look, "inspect": inspect}, "reward": round(reward, 4),
+            "done": done, "event": event
+        }))
         # ✅ Single-line JSON with "type" field
         step_log = {
             "type": "[STEP]",
@@ -171,6 +192,7 @@ What is your next action? Respond with JSON only."""
         if done:
             break
 
+    # Final state and grading
     state = get_state()
     episode_reward = state.get("episode_reward", total_reward)
     privacy_violations = state.get("privacy_violations", 0)
@@ -183,6 +205,14 @@ What is your next action? Respond with JSON only."""
         total_steps=steps
     )
 
+    print("[END]")
+    print(json.dumps({
+    "task": task_id,
+    "score": round(score["final_score"], 4),
+    "navigation_score": round(score["navigation_score"], 4),
+    "privacy_efficiency_score": round(score["privacy_efficiency_score"], 4),
+    # reached_goal removed ✅
+}))
     # ✅ Single-line JSON with "type" field
     end_log = {
         "type": "[END]",
